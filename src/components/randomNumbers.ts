@@ -7,7 +7,7 @@ export const pickNumbersAtRandomExcept = (exceptions: number[], count: number) =
         let candidate;
         do {
             candidate = pickNumberAtRandom(20);
-            console.log('numbers picked are', candidate)
+            //console.log('numbers picked are', candidate)
         }
         while (localExceptions.includes(candidate))
         localExceptions = [...localExceptions, candidate]

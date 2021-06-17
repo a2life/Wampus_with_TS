@@ -4,9 +4,13 @@ import {HowToPlay} from "./components/howToPlay_modal";
 
 import {caves} from "./components/Caves";
 import {pickNumbersAtRandomExcept} from "./components/randomNumbers";
+// todo multiroom shooting. currently only shoot to the first room
+// todo implement random shooting.
+// todo how to implement 'reject too crooked arrow path. ie.,  if k(2)=(k4), reject teh selection
 
 enum gamePlay { on, won, lost}
 
+enum action {move, shoot}
 
 const startMessage = () => (<p>Welcome to the game of wumpus!</p>)
 
@@ -22,11 +26,16 @@ const WumpusWarning = 'You hear a rustling.'
 const FellInPit = 'YYYIIIIEEEE . . . FELL IN PIT'
 const BatSnatch = 'ZAP--SUPER BAT SNATCH! ELSEWHEREVILLE FOR YOU!';
 const BumpedWumpus = '...OOPS! BUMPED A WUMPUS!'
+const GotTheWumpus = 'AHA! YOU GOT THE WUMPUS!'
 const WumpusGotYou = 'TSK TSK TSK- WUMPUS GOT YOU!'
-const AskForNextMove = 'What would you like to do next?'
+const AskForNextMove = 'Move to Another room or shoot an arrow?'
 const ButtonLabelMoveTo = "Move to"
 const ButtonLabelShoot = "Shoot Arrow"
+const NotThatCrooked = "ARROWS AREN'T THAT CROOKED - TRY ANOTHER ROOM"
 const ButtonLabelReset = "Start Over"
+const GameWon = "HEE HEE HEE - THE WUMPUS'LL GETCHA NEXT TIME!!"
+const GameLost = "HA HA HA - YOU LOSE!"
+
 
 const isHazardPresent = (hazardLocation: number[], playerMovingIn: number) => hazardLocation.includes(playerMovingIn)
 const selectNextRoomRandomely = (playerLocation: number, tunnels: number[]) => {
@@ -37,19 +46,24 @@ const selectNextRoomRandomely = (playerLocation: number, tunnels: number[]) => {
 export function App() {
     //  const initialBatLocations = pickNumbersAtRandomExcept([],2)
     const [gamePlaying, setGamePlaying] = useState(gamePlay.on);
+    const [actionMode, setActionMode] = useState(action.move)
     const [arrowCount, setArrowCount] = useState(initialArrowCount);
     const [batLocations, setBatLocations] = useState([...initialBatLocations])
     const [pitLocations, setPitLocations] = useState([...initialPitLocations])
     const [playerLocation, setPlayerLocation] = useState(initialPlayerLocation)
     const [wumpusLocation, setWumpusLocation] = useState(initialWumpusLocation)
     const [Message, setMessage] = useState([startMessage]);
-
+    const [arrowRange, setArrowRange] = useState(1);
+    const addMessageLine = (message: string) => setMessage([...Message, () => <p>{message}</p>])
     const startOverHandler = () => {
         setMessage([startMessage])
-        setPitLocations(pickNumbersAtRandomExcept([], 2))
-        setBatLocations(pickNumbersAtRandomExcept([], 2))
-        setWumpusLocation(pickNumbersAtRandomExcept([], 1))
-        setPlayerLocation(pickNumbersAtRandomExcept([...pitLocations, ...batLocations, ...wumpusLocation], 1)[0])
+        // if playerLoc == playerLoation, then useEffect-playerlocation will not trigger, so....
+        const playerLoc = pickNumbersAtRandomExcept([playerLocation], 1)[0] //define playerLoc and wumpusLoc beforehand
+               const wumpusLoc = pickNumbersAtRandomExcept([playerLoc], 1) //then use them for each set, as useState is asynchronous
+        setPlayerLocation(playerLoc)
+        setWumpusLocation(wumpusLoc)
+        setPitLocations(pickNumbersAtRandomExcept([playerLoc, ...wumpusLoc], 2))
+        setBatLocations(pickNumbersAtRandomExcept([playerLoc, ...wumpusLoc], 2))
         setArrowCount(initialArrowCount)
         setGamePlaying(gamePlay.on)
 
@@ -57,10 +71,8 @@ export function App() {
     const MoveToHandler = (e: Event) => {
         const buttonLabel = (e.target as HTMLButtonElement).innerText;
         const moveToTarget = buttonLabel.split(' ')[2]
-        //  console.log(buttonLabel.split(' ')[2])
         let playerIsMovingTo = parseInt(moveToTarget)
-        const message = () => <p>Moving to {playerIsMovingTo}...</p>
-        setMessage([...Message, message])
+        addMessageLine(`Moving to ${playerIsMovingTo}`)
         //irritate wumpus if it is in the room
         // and set a new location for Wumpus.
         if (playerIsMovingTo === wumpusLocation[0]) {
@@ -76,7 +88,8 @@ export function App() {
                 pickNumbersAtRandomExcept([...wumpusLocation, ...batLocations], 1)[0]
             setBatLocations([...batLocationsLocal])
             playerIsMovingTo = pickNumbersAtRandomExcept([...batLocations, ...wumpusLocation, playerLocation], 1)[0]
-            setMessage([...Message, wasMovingTo, batSnatch, message])
+            const isMovingTo = () => <p>taken to room {playerIsMovingTo}...</p>
+            setMessage([...Message, wasMovingTo, batSnatch, isMovingTo])
 
         }
 
@@ -87,7 +100,26 @@ export function App() {
         setPlayerLocation(cave)
     }
 
+    const shootHandler = () => {
+        const nodeList=document.querySelectorAll('.target-room')
+        const moveToTarget=(nodeList[0] as HTMLInputElement).value
+        //  console.log(buttonLabel.split(' ')[2])
+        let ArrowIsGoingTo = parseInt(moveToTarget)
+        const narrative = () => <p>Arrow went into {ArrowIsGoingTo}...</p>
 
+        if (ArrowIsGoingTo === wumpusLocation[0]) {
+            setMessage([...Message, narrative, () => <p>{GotTheWumpus}</p>])
+            setGamePlaying(gamePlay.won);
+        } else setMessage([...Message, narrative, () => <p>Missed</p>])
+        setArrowCount(arrowCount - 1)
+
+    }
+    const adjustArrowRange = (e: Event) => {
+        setArrowRange(parseInt((e.target as HTMLInputElement).value))
+    }
+    const targetSetter = (e: Event) => {
+        const target = (e.target as HTMLSelectElement).value
+    }
     useEffect(() => {
         let NewMessage = () => {
             if (isHazardPresent(wumpusLocation, playerLocation)) {
@@ -107,6 +139,7 @@ export function App() {
             //no hazards, fell through to next code section
 
             return (
+
                 <div>You are in room <span class="badge bg-success">{playerLocation}</span>, there are tunnels
                     to room&nbsp;
                     <span class="badge bg-secondary">{caves[playerLocation][0]}</span>,&nbsp;
@@ -124,7 +157,6 @@ export function App() {
 
                     })}
                     <p>{AskForNextMove}</p></div>
-
             )
         }
 
@@ -135,6 +167,16 @@ export function App() {
         const text = document.getElementById('history') as HTMLTextAreaElement
         text.scrollTop = text.scrollHeight
     }, [Message])
+    useEffect(() => {
+        if (gamePlaying === gamePlay.won) {
+            addMessageLine(GameWon)
+        }
+        if (gamePlaying === gamePlay.lost) {
+            addMessageLine(GameLost)
+        }
+
+    }, [gamePlaying])
+
 
     return (
         <>
@@ -146,20 +188,68 @@ export function App() {
                          style="height:250px;"
                     >{Message.map((element, i) => element())}</div>
                 </div>
-                {
-                    (gamePlaying === gamePlay.on) && caves[playerLocation].map((tunnel) => {
-                        return (
-                            <button class="btn btn-primary "
-                                    onClick={MoveToHandler}>{ButtonLabelMoveTo} {tunnel} </button>)
-                    })
-                }
+                {(gamePlaying === gamePlay.on) && (
+                    <div>
+                        <div class="row row-cols-auto mb-2">
+                            {
+                                caves[playerLocation].map((tunnel) => {
+                                    return (
+                                        <button class="btn btn-outline-success col"
+                                                onClick={MoveToHandler}>{ButtonLabelMoveTo} {tunnel} </button>
 
-                {(gamePlaying === gamePlay.on) &&
-                <button class="btn btn-danger ">{ButtonLabelShoot}<span class="badge bg-secondary">{arrowCount}</span>
-                </button>
+
+                                    )
+
+                                })
+                            }
+                        </div>
+                        <div class="row row-cols-auto mb-4">
+
+                            <button class="btn btn-outline-danger col"
+                                    onClick={shootHandler}>{ButtonLabelShoot}
+                                <span
+                                    class="badge bg-secondary">{arrowCount}</span>
+                            </button>
+
+
+                            {Array(arrowRange).fill(0).map((j, index1) => (
+                                <>
+                                    <div class="col mt-2" style="font-size:1em"><i class="fas fa-arrow-right"></i></div>
+                                    <select class="target-room form-select-sm col-md-1" aria-label="select arrow direction"
+                                            onChange={targetSetter}>
+                                        <option selected value="-1">Rm#</option>
+                                        <option value="0">Random</option>
+
+
+                                        {(index1 === 0) && caves[playerLocation].map((tunnel) => {
+                                            return <option value={tunnel}>{tunnel}</option>
+                                        })}
+
+                                        {(index1 != 0) &&
+                                        Array(20).fill(0).map((k, index) => {
+                                            return <option value={index + 1}>{index + 1}</option>
+                                        })
+                                        }
+
+                                    </select>
+                                </>
+                            ))}
+
+                        </div>
+
+                        <div class="row row-cols-auto mb-1">
+                            <label for="range" class="h4 col">Arrow range : {arrowRange}</label>
+                            <input type="range" min="1" max="5" class="col" value={arrowRange}
+                                   onChange={adjustArrowRange}/>
+                        </div>
+
+                    </div>
+                )
                 }
                 <button class="btn btn-secondary" onClick={startOverHandler}>{ButtonLabelReset}</button>
+
                 <HowToPlay/>
+
             </div>
 
         </>
