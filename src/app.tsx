@@ -1,6 +1,7 @@
 import {Logo} from './logo'
 import {useEffect, useState} from "preact/hooks";
 import {HowToPlay} from "./components/howToPlay_modal";
+import {StartOver} from "./components/resetSelectorModal";
 import {caves} from "./components/Caves";
 import {pickNumbersAtRandomExcept, selectNextRoomRandomely, choseRandomArrowPath} from "./components/randomNumbers";
 //to do  add play with same setup option
@@ -8,10 +9,10 @@ enum gamePlay { on, won, lost}
 
 const startMessage = () => (<p>Welcome to the game of wumpus!</p>)
 const initialArrowCount = 5;
-const initialBatLocations = pickNumbersAtRandomExcept([], 2)
-const initialPitLocations = pickNumbersAtRandomExcept([...initialBatLocations], 2)
-const initialWumpusLocation = pickNumbersAtRandomExcept([...initialBatLocations, ...initialPitLocations], 1)
-const initialPlayerLocation = pickNumbersAtRandomExcept([...initialBatLocations, ...initialPitLocations, ...initialWumpusLocation], 1)[0]
+let initialBatLocations = pickNumbersAtRandomExcept([], 2)
+let initialPitLocations = pickNumbersAtRandomExcept([...initialBatLocations], 2)
+let initialWumpusLocation = pickNumbersAtRandomExcept([...initialBatLocations, ...initialPitLocations], 1)
+let initialPlayerLocation = pickNumbersAtRandomExcept([...initialBatLocations, ...initialPitLocations, ...initialWumpusLocation], 1)[0]
 const PitWarning = 'You feel a cold wind blowing from a nearby cavern.';
 const BatWarning = 'You smell something terrible nearby.';
 const WumpusWarning = 'You hear a rustling.'
@@ -39,17 +40,25 @@ export function App() {
     const [wumpusLocation, setWumpusLocation] = useState(initialWumpusLocation)
     const [Message, setMessage] = useState([startMessage]);
     const [arrowRange, setArrowRange] = useState(1);
+    const [playerMoved,setPlayerMoved]=useState(false);
     const addMessageLine = (message: string) => setMessage([...Message, () => <p>{message}</p>])
-    const startOverHandler = () => {
-        setMessage([startMessage])
-        // if playerLoc == playerLoation, then useEffect-playerlocation will not trigger, so....
-        const playerLoc = pickNumbersAtRandomExcept([playerLocation], 1)[0] //define playerLoc and wumpusLoc beforehand
-        const wumpusLoc = pickNumbersAtRandomExcept([playerLoc], 1) //then use them for each set, as useState is asynchronous
-        setPlayerLocation(playerLoc)
-        setWumpusLocation(wumpusLoc)
-        setPitLocations(pickNumbersAtRandomExcept([playerLoc, ...wumpusLoc], 2))
-        setBatLocations(pickNumbersAtRandomExcept([playerLoc, ...wumpusLoc], 2))
+    const startOverHandler = (e:Event) => {
+        const NewLocationsNeeded = (e.target as HTMLButtonElement).value==='No'
+        console.log('New locations Needed', NewLocationsNeeded)
+        setMessage([startMessage])  //reset Message box
+        if (NewLocationsNeeded){
+            initialPlayerLocation =pickNumbersAtRandomExcept([playerLocation], 1)[0] //define playerLoc and wumpusLoc beforehand
+            initialWumpusLocation = pickNumbersAtRandomExcept([initialPlayerLocation], 1) //then use them for each set, as useState is asynchronous
+            initialBatLocations=pickNumbersAtRandomExcept([initialPlayerLocation, ...initialWumpusLocation], 2)
+            initialPitLocations=pickNumbersAtRandomExcept([initialPlayerLocation, ...initialWumpusLocation], 2)
+        }
+
+        setPlayerLocation(initialPlayerLocation)
+        setWumpusLocation(initialWumpusLocation)
+        setPitLocations(initialPitLocations)
+        setBatLocations(initialBatLocations)
         setArrowCount(initialArrowCount)
+        setPlayerMoved(false)
         setGamePlaying(gamePlay.on)
 
     }
@@ -83,6 +92,7 @@ export function App() {
     }
     const playerMoveTo = (cave: number) => {
         setPlayerLocation(cave)
+        setPlayerMoved(true)
     }
 
     const shootHandler = () => {
@@ -177,28 +187,31 @@ export function App() {
                     <div>{WumpusGotYou}</div>
                 </div>)
             } else return (
+                <div>
+                    {   (gamePlaying===gamePlay.on) &&
+                        <div>You are in room <span class="badge bg-success">{playerLocation}</span>, there are tunnels
+                            to room&nbsp;
+                            <span class="badge bg-secondary">{caves[playerLocation][0]}</span>,&nbsp;
+                            <span class="badge bg-secondary">{caves[playerLocation][1]}</span> and&nbsp;
+                            <span class="badge bg-secondary">{caves[playerLocation][2]}</span>.
+                            {batLocations.map((bat) => {
+                                if (caves[playerLocation].includes(bat)) return (<p>{BatWarning}</p>)
+                            })}
+                            {pitLocations.map((pit) => {
+                                if (caves[playerLocation].includes(pit)) return (<p>{PitWarning}</p>)
+                            })}
+                            {wumpusLocation.map((wumpus) => {
+                                //if (caves[playerLocation].includes(wumpus))  return WumpusWarning
+                                if (caves[playerLocation].includes(wumpus)) return (<p>{WumpusWarning}</p>)
 
-                <div>You are in room <span class="badge bg-success">{playerLocation}</span>, there are tunnels
-                    to room&nbsp;
-                    <span class="badge bg-secondary">{caves[playerLocation][0]}</span>,&nbsp;
-                    <span class="badge bg-secondary">{caves[playerLocation][1]}</span> and&nbsp;
-                    <span class="badge bg-secondary">{caves[playerLocation][2]}</span>.
-                    {batLocations.map((bat) => {
-                        if (caves[playerLocation].includes(bat)) return (<p>{BatWarning}</p>)
-                    })}
-                    {pitLocations.map((pit) => {
-                        if (caves[playerLocation].includes(pit)) return (<p>{PitWarning}</p>)
-                    })}
-                    {wumpusLocation.map((wumpus) => {
-                        //if (caves[playerLocation].includes(wumpus))  return WumpusWarning
-                        if (caves[playerLocation].includes(wumpus)) return (<p>{WumpusWarning}</p>)
-
-                    })}
-                    <p>{AskForNextMove}</p></div>
+                            })}
+                            <p>{AskForNextMove}</p></div>
+                    }
+                </div>
             )
         }
         setMessage([...Message, NewMessage])
-    }, [playerLocation, wumpusLocation])
+    }, [playerLocation, wumpusLocation, gamePlaying])
     useEffect(() => {
         const text = document.getElementById('history') as HTMLTextAreaElement
         text.scrollTop = text.scrollHeight
@@ -225,7 +238,7 @@ export function App() {
                 <h1 class="display-2">Hunt the Wumpus!</h1>
                 <div class="card  mb-4">
                     <div id="history" class="overflow-auto m-4 h4"
-                         style="height:250px;"
+                         style="height:350px;"
                     >{Message.map((element, i) => element())}</div>
                 </div>
                 {(gamePlaying === gamePlay.on) && (
@@ -296,8 +309,7 @@ export function App() {
                     </div>
                 )
                 }
-                <button class="btn btn-secondary" onClick={startOverHandler}>{ButtonLabelReset}</button>
-
+                {playerMoved && <StartOver handler={startOverHandler}/>}
                 <HowToPlay/>
 
             </div>
