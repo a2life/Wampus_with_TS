@@ -1,7 +1,7 @@
-#Hunt the Wumpus
-###implementation of "Hunt the wumpus" by Greggory Yob in 1973 and published by several magazines including 'Best of Creative Computing vol 1'
+# Hunt the Wumpus
+### Implementation of "Hunt the wumpus" by Greggory Yob in 1973 and published by several magazines including 'Best of Creative Computing vol 1'
 
-### this version is written in TypeScript with PREACT.
+### This version is written in TypeScript with PREACT.
 ### Web page formatting is through BootStrap V4/5
 
 
