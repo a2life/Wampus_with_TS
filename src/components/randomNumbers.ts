@@ -1,3 +1,5 @@
+import {caves} from "./Caves";
+
 const pickNumberAtRandom = (count: number) => Math.floor(Math.random() * count + 1);
 
 export const pickNumbersAtRandomExcept = (exceptions: number[], count: number) => {
@@ -15,4 +17,13 @@ export const pickNumbersAtRandomExcept = (exceptions: number[], count: number) =
     }
 
     return candidates;
+}
+export const selectNextRoomRandomely = (roomNum: number, tunnels: number[]) => { //select room including current room
+    const moveToOptions = [...tunnels, roomNum]
+    return moveToOptions[Math.floor(Math.random() * moveToOptions.length)]
+}
+export const choseRandomArrowPath = (location: number, except: number) => {
+    let moveToOptions = [...caves[location]]
+    moveToOptions = moveToOptions.filter(room => room !== except)
+    return moveToOptions[Math.floor(Math.random() * moveToOptions.length)]
 }
